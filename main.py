@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-# These imports will work once you build out your src/ modules
+# These imports will work once you build out the rest of your src/ modules
 # from src.gesture_recognition import GestureTracker
 # from src.segmentation import HumanSegmenter
-# from src.visual_effects import apply_invisibility, apply_ghost_mode, take_screenshot
+# from src.visual_effects import apply_invisibility
 
 def main():
     # 1. Initialize Webcam
@@ -15,11 +15,14 @@ def main():
     # segmenter = HumanSegmenter()
     
     background = None
-    current_mode = "normal"  # Available modes: normal, invisible, ghost
+    current_mode = "visible"  # Application starts in visible mode
     
-    print("Starting GhostVision...")
-    print("Press 'b' to capture the background (step out of frame first!).")
-    print("Press 'q' to quit.")
+    print("Starting GhostVision (Two-Handed Edition)...")
+    print("Controls:")
+    print(" - Step out of frame and press 'b' to capture the background.")
+    print(" - Raise TWO CLOSED FISTS to become INVISIBLE.")
+    print(" - Raise TWO OPEN PALMS to become VISIBLE.")
+    print(" - Press 'q' to quit.")
     
     while cap.isOpened():
         success, frame = cap.read()
@@ -47,35 +50,33 @@ def main():
         if background is not None:
             # Step A: Detect Gestures
             # gesture = tracker.detect_gesture(frame)
-            gesture = None # Placeholder until module is built
+            gesture = None # Placeholder until the tracker is active
             
-            # Step B: Update State based on Gesture
-            # if gesture == "OPEN_PALM":
+            # Step B: Update State based on the two-handed gestures
+            # if gesture == "INVISIBLE":
             #     current_mode = "invisible"
-            # elif gesture == "PEACE_SIGN":
-            #     current_mode = "ghost"
-            # elif gesture == "CLOSED_FIST":
-            #     current_mode = "normal"
-            # elif gesture == "PINCH":
-            #     take_screenshot(display_frame)
+            # elif gesture == "VISIBLE":
+            #     current_mode = "visible"
             
             # Step C: Apply Segmentation and Visual Effects
-            # if current_mode in ["invisible", "ghost"]:
+            # if current_mode == "invisible":
             #     mask = segmenter.get_mask(frame)
-                
-            #     if current_mode == "invisible":
-            #         display_frame = apply_invisibility(frame, background, mask)
-            #     elif current_mode == "ghost":
-            #         display_frame = apply_ghost_mode(frame, background, mask)
+            #     display_frame = apply_invisibility(frame, background, mask)
             pass
 
         # --- User Interface ---
-        cv2.putText(display_frame, f"Mode: {current_mode}", (10, 30), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        # Change text color based on mode (Green for visible, Blue for invisible)
+        text_color = (0, 255, 0) if current_mode == "visible" else (255, 150, 0)
+        cv2.putText(display_frame, f"Mode: {current_mode.upper()}", (10, 30), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
         
         if background is None:
             cv2.putText(display_frame, "Step away and press 'b' to capture background", 
                         (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        else:
+            # Show gesture instructions once background is captured
+            cv2.putText(display_frame, "Two Fists: INVISIBLE | Two Palms: VISIBLE", 
+                        (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
         # Show the final output
         cv2.imshow('GhostVision', display_frame)
