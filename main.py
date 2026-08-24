@@ -1,89 +1,183 @@
 import cv2
-import numpy as np
 
-# These imports will work once you build out the rest of your src/ modules
-# from src.gesture_recognition import GestureTracker
-# from src.segmentation import HumanSegmenter
-# from src.visual_effects import apply_invisibility
+from src.gesture_recognition import GestureTracker
+from src.segmentation import HumanSegmenter
+from src.visual_effects import apply_invisibility
+
 
 def main():
+    # ============================================================
     # 1. Initialize Webcam
+    # ============================================================
     cap = cv2.VideoCapture(0)
-    
-    # 2. Initialize Core Modules (Uncomment when classes are ready)
-    # tracker = GestureTracker()
-    # segmenter = HumanSegmenter()
-    
+
+    if not cap.isOpened():
+        print("ERROR: Could not open webcam.")
+        return
+
+    # ============================================================
+    # 2. Initialize Computer Vision Modules
+    # ============================================================
+    tracker = GestureTracker()
+    segmenter = HumanSegmenter()
+
+    # ============================================================
+    # 3. Application State
+    # ============================================================
     background = None
-    current_mode = "visible"  # Application starts in visible mode
-    
-    print("Starting GhostVision (Two-Handed Edition)...")
+    current_mode = "visible"
+
+    print("\n========================================")
+    print("       GhostVision - Started")
+    print("========================================")
     print("Controls:")
-    print(" - Step out of frame and press 'b' to capture the background.")
-    print(" - Raise TWO CLOSED FISTS to become INVISIBLE.")
-    print(" - Raise TWO OPEN PALMS to become VISIBLE.")
-    print(" - Press 'q' to quit.")
-    
+    print("  B -> Capture background")
+    print("  Two closed fists -> INVISIBLE")
+    print("  Two open palms  -> VISIBLE")
+    print("  Q -> Quit")
+    print("========================================\n")
+
+    # ============================================================
+    # 4. Main Real-Time Processing Loop
+    # ============================================================
     while cap.isOpened():
+
         success, frame = cap.read()
+
         if not success:
-            print("Ignoring empty camera frame.")
+            print("Warning: Could not read camera frame.")
             continue
-            
-        # Flip the frame horizontally for a natural selfie-view
+
+        # Mirror the camera for natural selfie-view
         frame = cv2.flip(frame, 1)
+
+        # Start with the original frame
         display_frame = frame.copy()
-        
-        # --- Keyboard Controls ---
+
+        # ========================================================
+        # Keyboard Controls
+        # ========================================================
         key = cv2.waitKey(1) & 0xFF
-        
-        # Capture Background
-        if key == ord('b'):
+
+        # --------------------------------------------------------
+        # Capture background
+        # --------------------------------------------------------
+        if key == ord("b"):
             background = frame.copy()
-            print("Background captured! You can now step back into the frame.")
-            
-        # Exit Application
-        elif key == ord('q'):
+            current_mode = "visible"
+
+            print("Background captured successfully!")
+            print("Step back into the frame and raise TWO CLOSED FISTS.")
+
+        # --------------------------------------------------------
+        # Quit
+        # --------------------------------------------------------
+        elif key == ord("q"):
+            print("Closing GhostVision...")
             break
 
-        # --- Main Pipeline (Requires background to be captured first) ---
+        # ========================================================
+        # Main Vision Pipeline
+        # ========================================================
         if background is not None:
-            # Step A: Detect Gestures
-            # gesture = tracker.detect_gesture(frame)
-            gesture = None # Placeholder until the tracker is active
-            
-            # Step B: Update State based on the two-handed gestures
-            # if gesture == "INVISIBLE":
-            #     current_mode = "invisible"
-            # elif gesture == "VISIBLE":
-            #     current_mode = "visible"
-            
-            # Step C: Apply Segmentation and Visual Effects
-            # if current_mode == "invisible":
-            #     mask = segmenter.get_mask(frame)
-            #     display_frame = apply_invisibility(frame, background, mask)
-            pass
 
-        # --- User Interface ---
-        # Change text color based on mode (Green for visible, Blue for invisible)
-        text_color = (0, 255, 0) if current_mode == "visible" else (255, 150, 0)
-        cv2.putText(display_frame, f"Mode: {current_mode.upper()}", (10, 30), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
-        
-        if background is None:
-            cv2.putText(display_frame, "Step away and press 'b' to capture background", 
-                        (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            # ----------------------------------------------------
+            # Step A: Detect hand gesture
+            # ----------------------------------------------------
+            gesture = tracker.detect_gesture(frame)
+
+            # ----------------------------------------------------
+            # Step B: Update application mode
+            # ----------------------------------------------------
+            if gesture == "INVISIBLE":
+                current_mode = "invisible"
+
+            elif gesture == "VISIBLE":
+                current_mode = "visible"
+
+            # ----------------------------------------------------
+            # Step C: Apply invisibility effect
+            # ----------------------------------------------------
+            if current_mode == "invisible":
+
+                # Generate human segmentation mask
+                mask = segmenter.get_mask(frame)
+
+                # Replace human region with captured background
+                display_frame = apply_invisibility(
+                    frame,
+                    background,
+                    mask
+                )
+
+        # ========================================================
+        # User Interface
+        # ========================================================
+
+        # Green = visible
+        # Orange/Blue = invisible
+        if current_mode == "visible":
+            text_color = (0, 255, 0)
         else:
-            # Show gesture instructions once background is captured
-            cv2.putText(display_frame, "Two Fists: INVISIBLE | Two Palms: VISIBLE", 
-                        (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            text_color = (255, 150, 0)
 
-        # Show the final output
-        cv2.imshow('GhostVision', display_frame)
+        # --------------------------------------------------------
+        # Current mode
+        # --------------------------------------------------------
+        cv2.putText(
+            display_frame,
+            f"Mode: {current_mode.upper()}",
+            (10, 35),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            text_color,
+            2,
+            cv2.LINE_AA
+        )
 
-    # Cleanup
+        # --------------------------------------------------------
+        # Instructions
+        # --------------------------------------------------------
+        if background is None:
+
+            cv2.putText(
+                display_frame,
+                "Step away and press 'B' to capture background",
+                (10, 75),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 255),
+                2,
+                cv2.LINE_AA
+            )
+
+        else:
+
+            cv2.putText(
+                display_frame,
+                "Two Fists: INVISIBLE | Two Palms: VISIBLE",
+                (10, 75),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                1,
+                cv2.LINE_AA
+            )
+
+        # --------------------------------------------------------
+        # Display final frame
+        # --------------------------------------------------------
+        cv2.imshow("GhostVision", display_frame)
+
+    # ============================================================
+    # 5. Cleanup
+    # ============================================================
     cap.release()
     cv2.destroyAllWindows()
 
+
+# ================================================================
+# Application Entry Point
+# ================================================================
 if __name__ == "__main__":
     main()
